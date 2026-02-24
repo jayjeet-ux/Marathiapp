@@ -1,0 +1,500 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marathi Writing App</title>
+<style>
+body{font-family:Arial;margin:0;padding:18px;background:#f5f6f8}
+.card{max-width:980px;margin:0 auto;background:#fff;border-radius:14px;padding:16px 16px 22px 16px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+h1{margin:6px 0 8px 0;font-size:28px}
+.nav{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 10px 0}
+.nav button{padding:10px 14px;border-radius:10px;border:1px solid #ddd;background:#fff}
+.nav button.active{background:#111;color:#fff;border-color:#111}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.field{flex:1;min-width:240px}
+label{display:block;font-size:13px;margin:10px 0 6px 0;color:#222}
+input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}
+button.primary{width:100%;padding:14px;border-radius:12px;border:0;background:#111;color:#fff;font-size:18px;margin-top:12px}
+.small{font-size:13px;color:#444;margin-top:10px}
+.msg{margin-top:10px;font-size:14px}
+.good{color:#0a7a2e}
+.bad{color:#b10000}
+.hr{height:1px;background:#eee;margin:14px 0}
+.qtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.qtitle{font-size:14px;color:#444}
+.prompt{font-size:30px;margin:6px 0 10px 0}
+.canvasWrap{background:#fff;border:2px solid #111;border-radius:14px;overflow:hidden}
+canvas{touch-action:none;display:block;width:100%;height:360px;background:#fff}
+.btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.btnRow button{flex:1;padding:14px;border-radius:12px;border:0;font-size:18px}
+.btnRow button.light{background:#e9ecef}
+.btnRow button.dark{background:#111;color:#fff}
+.attempt{border:1px solid #eee;border-radius:12px;padding:12px;margin:12px 0}
+.attemptHead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.thumbBtn{padding:10px 12px;border-radius:10px;border:1px solid #ddd;background:#fff}
+.thumbBtn.activeUp{border-color:#0a7a2e}
+.thumbBtn.activeDown{border-color:#b10000}
+.imgGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.imgGrid img{width:100%;border-radius:12px;border:1px solid #eee}
+@media (min-width:900px){.imgGrid{grid-template-columns:repeat(3,1fr)} canvas{height:430px}}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Marathi Writing App</h1>
+<div class="small">Register a child, take a 10 question test with finger writing, then view and score the last 6 tests.</div>
+
+<div class="nav">
+<button id="tabBtnRegister" class="active" onclick="showTab('register')">Register</button>
+<button id="tabBtnTest" onclick="showTab('test')">Test</button>
+<button id="tabBtnView" onclick="showTab('view')">View</button>
+</div>
+
+<div id="tabRegister">
+<div class="row">
+<div class="field">
+<label>Child name</label>
+<input id="regChildName" placeholder="Example Saanvi">
+</div>
+<div class="field">
+<label>Grade</label>
+<select id="regGrade">
+<option value="">Select</option>
+<option value="1">Grade 1</option>
+<option value="2">Grade 2</option>
+<option value="3">Grade 3</option>
+</select>
+</div>
+<div class="field">
+<label>Parent email</label>
+<input id="regParentEmail" placeholder="name@email.com">
+</div>
+</div>
+<button class="primary" onclick="register()">Register</button>
+<div id="regMsg" class="msg"></div>
+<div class="hr"></div>
+<div class="small">After registration you will receive a 4 digit username and the PIN is the same number.</div>
+</div>
+
+<div id="tabTest" style="display:none">
+<div class="row">
+<div class="field">
+<label>Student ID</label>
+<input id="testStudentId" placeholder="4 digits">
+</div>
+<div class="field">
+<label>PIN</label>
+<input id="testPin" placeholder="Same 4 digits">
+</div>
+</div>
+<button class="primary" onclick="startTest()">Start test</button>
+<div id="testMsg" class="msg"></div>
+
+<div id="testArea" style="display:none">
+<div class="hr"></div>
+<div class="qtop">
+<div class="qtitle" id="qTitle"></div>
+<button class="thumbBtn" onclick="exitTest()">Exit</button>
+</div>
+<div class="prompt" id="qPrompt"></div>
+<div class="canvasWrap"><canvas id="pad"></canvas></div>
+<div class="btnRow">
+<button class="light" onclick="prevQ()">Back</button>
+<button class="light" onclick="clearPad()">Clear</button>
+<button class="dark" onclick="nextQ()" id="nextBtn">Next</button>
+</div>
+<div class="small">Your writing is saved automatically as you move between questions.</div>
+</div>
+
+<div id="submitArea" style="display:none">
+<div class="hr"></div>
+<div class="prompt" style="font-size:22px">Submit</div>
+<div class="small">This will upload your 10 answers.</div>
+<div class="btnRow">
+<button class="dark" onclick="submitTest()">Submit</button>
+<button class="light" onclick="restartTest()">Restart</button>
+</div>
+<div id="submitMsg" class="msg"></div>
+</div>
+</div>
+
+<div id="tabView" style="display:none">
+<div class="row">
+<div class="field">
+<label>Student ID</label>
+<input id="viewStudentId" placeholder="4 digits">
+</div>
+<div class="field">
+<label>PIN</label>
+<input id="viewPin" placeholder="Same 4 digits">
+</div>
+</div>
+<button class="primary" onclick="loadHistory()">Load history</button>
+<div id="viewMsg" class="msg"></div>
+<div id="historyArea"></div>
+</div>
+
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwnjHXUAnTWYMd-s4MIF55qnHZp_oIYKErDZF_Jeggar5zqHuGJqeY4YVXSVAT3IRXf/exec
+";
+
+function showTab(which){
+document.getElementById("tabRegister").style.display = which==="register" ? "block" : "none";
+document.getElementById("tabTest").style.display = which==="test" ? "block" : "none";
+document.getElementById("tabView").style.display = which==="view" ? "block" : "none";
+setActive("tabBtnRegister", which==="register");
+setActive("tabBtnTest", which==="test");
+setActive("tabBtnView", which==="view");
+}
+function setActive(id,on){document.getElementById(id).className = on ? "active" : "";}
+
+function formPost(bodyObj){
+const body = new URLSearchParams();
+Object.keys(bodyObj).forEach(k => body.append(k, bodyObj[k]));
+return fetch(API_URL, {method:"POST", body});
+}
+
+function qs(obj){
+const u = new URL(API_URL);
+Object.keys(obj).forEach(k => u.searchParams.set(k, obj[k]));
+return u.toString();
+}
+
+function setMsg(el, text, ok){
+const e = document.getElementById(el);
+e.className = "msg " + (ok ? "good" : "bad");
+e.textContent = text;
+}
+
+async function register(){
+setMsg("regMsg","",true);
+const childName = document.getElementById("regChildName").value.trim();
+const grade = document.getElementById("regGrade").value.trim();
+const parentEmail = document.getElementById("regParentEmail").value.trim();
+
+if(!childName){setMsg("regMsg","Enter child name.",false);return;}
+if(!grade){setMsg("regMsg","Select grade.",false);return;}
+if(!parentEmail){setMsg("regMsg","Enter parent email.",false);return;}
+
+try{
+const res = await formPost({action:"register", childName, grade, parentEmail});
+const j = await res.json();
+if(!j.ok){setMsg("regMsg", j.message || "Register failed.", false);return;}
+setMsg("regMsg","Registered. Username and PIN: " + j.studentId + ". Check email.", true);
+document.getElementById("testStudentId").value = j.studentId;
+document.getElementById("testPin").value = j.pin;
+showTab("test");
+}catch(e){
+setMsg("regMsg","Register failed.",false);
+}
+}
+
+let state = {
+studentId:"",
+pin:"",
+prompts:[],
+sentenceIds:[],
+answers:[],
+qIndex:0
+};
+
+async function startTest(){
+setMsg("testMsg","",true);
+const studentId = document.getElementById("testStudentId").value.trim();
+const pin = document.getElementById("testPin").value.trim();
+if(!studentId || !pin){setMsg("testMsg","Enter student ID and PIN.",false);return;}
+
+try{
+const res = await fetch(qs({action:"getTest", studentId, pin}));
+const j = await res.json();
+if(!j.ok){setMsg("testMsg", j.message || "Could not load test.", false);return;}
+
+state.studentId = studentId;
+state.pin = pin;
+state.prompts = j.prompts || [];
+state.sentenceIds = j.sentenceIds || [];
+state.answers = new Array(state.prompts.length).fill(null);
+state.qIndex = 0;
+
+document.getElementById("testArea").style.display = "block";
+document.getElementById("submitArea").style.display = "none";
+setMsg("testMsg","Loaded.",true);
+
+fitCanvas();
+loadAnswerToPad();
+renderQuestion();
+}catch(e){
+setMsg("testMsg","Could not load test.",false);
+}
+}
+
+function exitTest(){
+document.getElementById("testArea").style.display = "none";
+document.getElementById("submitArea").style.display = "none";
+setMsg("testMsg","Exited.",true);
+}
+
+function restartTest(){
+state.answers = new Array(state.prompts.length).fill(null);
+state.qIndex = 0;
+document.getElementById("testArea").style.display = "block";
+document.getElementById("submitArea").style.display = "none";
+clearPad();
+renderQuestion();
+}
+
+function renderQuestion(){
+const i = state.qIndex;
+document.getElementById("qTitle").textContent = "Question " + (i+1) + " of " + state.prompts.length + "   Candidate " + state.studentId;
+document.getElementById("qPrompt").textContent = state.prompts[i] || "";
+document.getElementById("nextBtn").textContent = (i === state.prompts.length-1) ? "Finish" : "Next";
+}
+
+function prevQ(){
+savePadToAnswer();
+if(state.qIndex > 0){
+state.qIndex -= 1;
+loadAnswerToPad();
+renderQuestion();
+}
+}
+
+function nextQ(){
+savePadToAnswer();
+if(state.qIndex < state.prompts.length-1){
+state.qIndex += 1;
+loadAnswerToPad();
+renderQuestion();
+}else{
+document.getElementById("testArea").style.display = "none";
+document.getElementById("submitArea").style.display = "block";
+setMsg("submitMsg","",true);
+}
+}
+
+async function submitTest(){
+setMsg("submitMsg","Submitting...",true);
+savePadToAnswer();
+
+try{
+const payload = {
+action:"submit",
+studentId: state.studentId,
+pin: state.pin,
+submittedAtIso: new Date().toISOString(),
+sentenceIdsJson: JSON.stringify(state.sentenceIds),
+imagesJson: JSON.stringify(state.answers.map(x => x || blankJpegDataUrl()))
+};
+
+const res = await formPost(payload);
+const j = await res.json();
+if(!j.ok){setMsg("submitMsg", j.message || "Submit failed.", false);return;}
+setMsg("submitMsg","Submitted. Check your email. Parents can view in the View tab.", true);
+}catch(e){
+setMsg("submitMsg","Submit failed.",false);
+}
+}
+
+function blankJpegDataUrl(){
+const c = document.createElement("canvas");
+c.width = 1200;
+c.height = 600;
+const ctx = c.getContext("2d");
+ctx.fillStyle = "#ffffff";
+ctx.fillRect(0,0,c.width,c.height);
+return c.toDataURL("image/jpeg", 0.85);
+}
+
+async function loadHistory(){
+setMsg("viewMsg","",true);
+document.getElementById("historyArea").innerHTML = "";
+const studentId = document.getElementById("viewStudentId").value.trim();
+const pin = document.getElementById("viewPin").value.trim();
+if(!studentId || !pin){setMsg("viewMsg","Enter student ID and PIN.",false);return;}
+
+try{
+const res = await fetch(qs({action:"history", studentId, pin}));
+const j = await res.json();
+if(!j.ok){setMsg("viewMsg", j.message || "Could not load history.", false);return;}
+
+setMsg("viewMsg","Loaded.",true);
+
+const wrap = document.getElementById("historyArea");
+wrap.innerHTML = "";
+
+const header = document.createElement("div");
+header.className = "small";
+header.textContent = "Lifetime score: " + j.lifetimePercent + "%   Total questions scored: " + j.lifetimeTotalQuestions;
+wrap.appendChild(header);
+
+(j.last6 || []).forEach(at => {
+const box = document.createElement("div");
+box.className = "attempt";
+
+const head = document.createElement("div");
+head.className = "attemptHead";
+head.innerHTML = "<div><div style='font-size:14px;color:#444'>Attempt</div><div style='font-size:16px'>" + at.submittedAtIso + "</div></div><div style='font-size:18px'>Score " + at.attemptPercent + "%</div>";
+box.appendChild(head);
+
+const grid = document.createElement("div");
+grid.className = "imgGrid";
+
+for(let i=0;i<at.images.length;i++){
+const imgWrap = document.createElement("div");
+const t = at.thumbs && at.thumbs[i] ? at.thumbs[i] : "";
+const p = at.prompts && at.prompts[i] ? at.prompts[i] : "";
+const sid = at.sentenceIdsUsed && at.sentenceIdsUsed[i] ? at.sentenceIdsUsed[i] : "";
+imgWrap.innerHTML = "<div style='font-size:13px;color:#333;margin:8px 0 6px 0'>" + (i+1) + ". " + escapeHtml(p) + "</div>";
+const img = document.createElement("img");
+img.src = at.images[i];
+imgWrap.appendChild(img);
+
+const btnRow = document.createElement("div");
+btnRow.style.marginTop = "8px";
+btnRow.style.display = "flex";
+btnRow.style.gap = "10px";
+
+const up = document.createElement("button");
+up.className = "thumbBtn" + (t==="UP" ? " activeUp" : "");
+up.textContent = "Thumbs up";
+up.onclick = () => rate(at.attemptId, i, sid, "UP", up, down);
+
+const down = document.createElement("button");
+down.className = "thumbBtn" + (t==="DOWN" ? " activeDown" : "");
+down.textContent = "Thumbs down";
+down.onclick = () => rate(at.attemptId, i, sid, "DOWN", up, down);
+
+btnRow.appendChild(up);
+btnRow.appendChild(down);
+imgWrap.appendChild(btnRow);
+
+grid.appendChild(imgWrap);
+}
+box.appendChild(grid);
+wrap.appendChild(box);
+});
+
+}catch(e){
+setMsg("viewMsg","Could not load history.",false);
+}
+}
+
+async function rate(attemptId, questionIndex, sentenceId, thumbs, upBtn, downBtn){
+const studentId = document.getElementById("viewStudentId").value.trim();
+const pin = document.getElementById("viewPin").value.trim();
+const raterEmail = "";
+
+try{
+const res = await fetch(qs({
+action:"saveRating",
+studentId,
+pin,
+attemptId,
+questionIndex: String(questionIndex),
+sentenceId: String(sentenceId),
+thumbs,
+raterEmail
+}));
+const j = await res.json();
+if(!j.ok) return;
+
+upBtn.className = "thumbBtn" + (thumbs==="UP" ? " activeUp" : "");
+downBtn.className = "thumbBtn" + (thumbs==="DOWN" ? " activeDown" : "");
+
+}catch(e){}
+}
+
+function escapeHtml(s){
+return String(s || "").replace(/[&<>"']/g, function(m){
+return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" })[m];
+});
+}
+
+const canvas = document.getElementById("pad");
+const ctx = canvas.getContext("2d");
+let drawing = false;
+let last = null;
+
+function fitCanvas(){
+const rect = canvas.getBoundingClientRect();
+const w = Math.max(900, Math.floor(rect.width * 2));
+const h = Math.max(700, Math.floor(rect.height * 2));
+canvas.width = w;
+canvas.height = h;
+ctx.lineWidth = Math.round(w / 300);
+ctx.lineCap = "round";
+ctx.lineJoin = "round";
+ctx.strokeStyle = "#000000";
+ctx.fillStyle = "#ffffff";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+function pointFromEvent(ev){
+const r = canvas.getBoundingClientRect();
+const x = (ev.clientX - r.left) * (canvas.width / r.width);
+const y = (ev.clientY - r.top) * (canvas.height / r.height);
+return {x,y};
+}
+
+function startDraw(ev){
+drawing = true;
+last = pointFromEvent(ev);
+}
+function moveDraw(ev){
+if(!drawing) return;
+const p = pointFromEvent(ev);
+ctx.beginPath();
+ctx.moveTo(last.x, last.y);
+ctx.lineTo(p.x, p.y);
+ctx.stroke();
+last = p;
+}
+function endDraw(){
+drawing = false;
+last = null;
+}
+
+canvas.addEventListener("pointerdown", (e)=>{canvas.setPointerCapture(e.pointerId); startDraw(e);});
+canvas.addEventListener("pointermove", (e)=>{moveDraw(e);});
+canvas.addEventListener("pointerup", ()=>{endDraw();});
+canvas.addEventListener("pointercancel", ()=>{endDraw();});
+
+function clearPad(){
+ctx.fillStyle = "#ffffff";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle = "#ffffff";
+}
+
+function savePadToAnswer(){
+const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+state.answers[state.qIndex] = dataUrl;
+}
+
+function loadAnswerToPad(){
+clearPad();
+const dataUrl = state.answers[state.qIndex];
+if(!dataUrl) return;
+const img = new Image();
+img.onload = function(){
+ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+};
+img.src = dataUrl;
+}
+
+window.addEventListener("resize", ()=>{
+if(document.getElementById("testArea").style.display === "block"){
+const saved = canvas.toDataURL("image/jpeg", 0.85);
+fitCanvas();
+if(saved){
+const img = new Image();
+img.onload = function(){ ctx.drawImage(img, 0, 0, canvas.width, canvas.height); };
+img.src = saved;
+}
+}
+});
+</script>
+</body>
+</html>
